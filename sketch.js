@@ -41,7 +41,7 @@ var centerY;
 var x = [];
 var y = [];
 var speed = 1;
-
+var pastMousePosition = [];
 
 var sizer = 10;
 var sizerDirection = -1;
@@ -49,6 +49,7 @@ var sizerDirection = -1;
 var filled = false;
 var freeze = false;
 var indicate = false;
+var passive = false;
 
 var strokeS;
 var strokeE;
@@ -60,7 +61,7 @@ let count = 1, countScale = 1, topLimit = 100, bottomLimit = 0;
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
-
+  pastMousePosition.push({x: mouseX, y: mouseY});
 
   strokeS = color(255, 0, 0);
   strokeE = color(0, 0, 139);
@@ -79,11 +80,14 @@ function setup() {
   background(255);
 }
 
-function draw() {
 
+
+function draw() {
+  mouseStatic();
+  
   stroke( lerpColor(strokeS, strokeE, pingpong()/topLimit) );
   warnick_colorIndicator();
-  warnick_calculate();
+  
 
   if (filled) {
     fill(random(255));
@@ -91,7 +95,11 @@ function draw() {
     noFill();
   }
 
-  warnick_shape();
+  if( !passive ){
+    warnick_calculate();
+    warnick_shape();
+  }
+  
 }
 
 function mousePressed() {
@@ -103,6 +111,26 @@ function mousePressed() {
   for (var i = 0; i < formResolution; i++) {
     x[i] = cos(angle * i) * initRadius;
     y[i] = sin(angle * i) * initRadius;
+  }
+}
+
+function mouseStatic(){
+  var passiveThreshold = 20;
+  var mouseCurrent = {
+    x: mouseX,
+    y: mouseY
+  }
+
+  // Builds array of the last ten locations
+  pastMousePosition.push(mouseCurrent);
+  if(pastMousePosition.length > 10) pastMousePosition.shift();
+
+  // This section will toggle passive and stop the calling of the shape function
+  // Which will pause the drawing while the mosue isn't moving
+  if( dist(pastMousePosition[0].x, pastMousePosition[0].y, pastMousePosition[pastMousePosition.length-1].x, pastMousePosition[pastMousePosition.length-1].y) <= passiveThreshold ){
+    passive = true;
+  } else {
+    passive = false;
   }
 }
 
@@ -150,15 +178,35 @@ function warnick_colorIndicator(){
 
 function warnick_calculate(){
   // floating towards mouse position
-  centerX += (mouseX - centerX) * (speed/10);
-  centerY += (mouseY - centerY) * (speed/10);
+  // centerX += (mouseX - centerX) * (speed/10);
+  // centerY += (mouseY - centerY) * (speed/10);
+
+  centerX = mouseX;
+  centerY = mouseY;
+
   // uncomment the following line to show position of center point
-  ellipse(centerX, centerY, 5, 5);
+  // ellipse(centerX, centerY, 5, 5);
 
   // calculate new points
+  var direction = 1;
+  var shrinkSpeed = 1;
   for (var i = 0; i < formResolution; i++) {
-    x[i] += random(-stepSize, stepSize);
-    y[i] += random(-stepSize, stepSize);
+
+
+    if(x[i] < 0) x[i] += direction*shrinkSpeed;
+    if(x[i] > 0) x[i] -= direction*shrinkSpeed;
+
+    if(y[i] < 0) y[i] += direction*shrinkSpeed;
+    if(y[i] > 0) y[i] -= direction*shrinkSpeed;
+
+    // if( y[i] <= centerY ) y[i] = y[i]+1;
+    // if( y[i] >= centerY ) y[i] = y[i]-1;
+  }
+
+
+  for (var i = 0; i < formResolution; i++) {
+    // x[i] += random(-stepSize, stepSize);
+    // y[i] += random(-stepSize, stepSize);
     // uncomment the following line to show position of the agents
     // ellipse(x[i] + centerX, y[i] + centerY, 5, 5);
   }
@@ -166,9 +214,10 @@ function warnick_calculate(){
 
 
 function warnick_shape(){
+  
   beginShape();
   // first controlpoint
-  curveVertex(x[formResolution - 1] + centerX, y[formResolution - 1] + centerY);
+  curveVertex(x[formResolution - 1] + centerX , y[formResolution - 1] + centerY);
 
   // only these points are drawn
   for (var i = 0; i < formResolution; i++) {
